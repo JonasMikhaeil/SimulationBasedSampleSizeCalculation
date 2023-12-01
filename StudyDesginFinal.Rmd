@@ -4,6 +4,27 @@ author: "Jonas Mikhaeil"
 date: "2023-11-30"
 output: html_document
 ---
+
+
+```{r}
+### high ICC
+input$comp_prob <- .8
+input$mu <- c(0.8,0.76,0.94,0.6,0.7,0.71)
+input$sd <- 0.01
+### low compliance
+input$comp_prob <- 0.5
+input$alpha <- c(0.1,-0.35,0.5,-0.1,-0.35,-0.15)
+input$comp_prob <- 0.5
+input$mu <- c(-0.2,0.2,0.2,-0.7,-0.1,0.5)
+input$sd <- 0.59
+### regular
+input$comp_prob <- 0.8
+input$alpha <- c(0.1,-0.35,0.5,-0.1,-0.35,-0.15)
+input$comp_prob <- 0.5
+input$mu <- c(-0.2,0.2,0.2,-0.7,-0.1,0.5)
+input$sd <- 0.59
+```
+
 ```{r}
 input <- list()
 input$alpha <- c(0.1,-0.35,0.5,-0.1,-0.35,-0.15)
@@ -11,6 +32,8 @@ input$comp_prob <- 0.8
 input$mu <- c(-0.2,0.2,0.2,-0.7,-0.1,0.5)
 input$sd <- 0.59
 input$treat <- TRUE
+
+
 probabiltiy_shd_given_riskScore <- function(risk_score,hospital){
     ### assume score is calibrated
     hosp<-c("columbia","allen","lawrence","cornell","low man","queens")
@@ -60,11 +83,9 @@ probabiltiy_shd_given_riskScore <- function(risk_score,hospital){
     # Generate risk scores for each hospital
     for (k in 1:length(N_K)) {
       mock <- c(0.7,0.7,0.5,0.5,0.7,0.7)
-      risk_score_vector <- c(risk_score_vector,truncnorm::rtruncnorm(N_K[k],a=0.6,b=1.,hosp_mu[k],hosp_var[k])) #rep(mock[k],N_K[k]))#
+      risk_score_vector <- c(risk_score_vector,truncnorm::rtruncnorm(N_K[k],a=0.6,b=1.,hosp_mu[k],hosp_var[k])) 
     }
-    
-    # Create the data frame
-    risk_score <- data.frame(
+        risk_score <- data.frame(
       hospital = rep(hosp, times = N_K),
       risk_score = risk_score_vector
     )
@@ -74,7 +95,8 @@ probabiltiy_shd_given_riskScore <- function(risk_score,hospital){
       mutate(p_shd = probabiltiy_shd_given_riskScore(risk_score,hospital)) %>%
       mutate(shd = rbinom(1, 1, p_shd)) %>%
       ungroup() 
-    #make this restricted (cornell & columbia)
+    ### ristricted randomization to ensure Columbia and Cornell are in different
+    ### treatment groups
     if(input$treat==TRUE){
       treatment_indicator <- sample(1:K,round(K/2),replace = FALSE)
       while (which(hosp == "columbia") %in% treatment_indicator == which(hosp == "cornell") %in% treatment_indicator) {
@@ -101,7 +123,6 @@ data<-simulate_data(100000)
     hosp<-c("columbia","allen","lawrence","cornell","low man","queens")
     real_data <- data.frame(hospital=hosp,shd_rate=c(299/(111+299),207/(207+84),301/(301+51),282/(135+282),166/(72+166),372/(372+111)))
     rate_of_detected_shd <- data |>filter(echo == 1) |> aggregate(diagnosis~hospital,mean)
-    #colnames(rate_of_detected_shd)[3] <- "rate of shd in patients who \n received an echo (usual care)"
     plot1 <- ggplot(real_data,aes(x=hospital,y=shd_rate))+
       geom_point() + 
       geom_point(data=rate_of_detected_shd,aes(x=hospital,y=diagnosis),col="steelblue")+
@@ -213,24 +234,7 @@ VaryAClus <- data %>%
       }
 ```
 
-```{r}
-### high ICC
-input$comp_prob <- .8
-input$mu <- c(0.8,0.76,0.94,0.6,0.7,0.71)
-input$sd <- 0.01
-### low compliance
-input$comp_prob <- 0.5
-input$alpha <- c(0.1,-0.35,0.5,-0.1,-0.35,-0.15)
-input$comp_prob <- 0.5
-input$mu <- c(-0.2,0.2,0.2,-0.7,-0.1,0.5)
-input$sd <- 0.59
-### regular
-input$comp_prob <- 0.8
-input$alpha <- c(0.1,-0.35,0.5,-0.1,-0.35,-0.15)
-input$comp_prob <- 0.5
-input$mu <- c(-0.2,0.2,0.2,-0.7,-0.1,0.5)
-input$sd <- 0.59
-```
+
 
 
 
@@ -263,7 +267,7 @@ input$sd <- 0.59
           #else{r=0}
         #}
         if(multilevel==TRUE){
-          mod <- lme4::lmer(diagnosis~treatment+risk_score+ (1| hospital),data=data)
+          mod <- lme4::lmer(diagnosis~treatment+ (1| hospital),data=data)
           
           te <- fixef(mod)["treatment"]
           te.se <- se.fixef(mod)["treatment"]
@@ -311,15 +315,8 @@ input$sd <- 0.59
     make_plot(power_Cluster)
 ```
 
-```{r}
-power_Cluster_highClustering <- power_Cluster
-```
 
-```{r}
-data <- simulate_data(1000)
-mod <- lme4::lmer(diagnosis~treatment+risk_score+ (1| hospital),data=data)
-summary(mod)
-```
+
 
 ```{r,warning=FALSE,message=FALSE}
 
